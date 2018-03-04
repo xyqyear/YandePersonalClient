@@ -1,7 +1,7 @@
 # -*- coding:utf-8 -*-
 
 import tkinter.messagebox
-import threading_testing
+import threading
 import requests
 import queue
 import os
@@ -12,10 +12,10 @@ from tkinter import *
 
 num = 0
 
-class DownloadThreading(threading_testing.Thread):
+class DownloadThreading(threading.Thread):
 
     def __init__(self, que, tid, window, site):
-        threading_testing.Thread.__init__(self)
+        threading.Thread.__init__(self)
         self.queue = que
         self.tid = tid
         self.headers = {
@@ -88,10 +88,10 @@ class Downloader:
 
 
 
-class WorkThreading(threading_testing.Thread):
+class WorkThreading(threading.Thread):
 
     def __init__(self, window):
-        threading_testing.Thread.__init__(self)
+        threading.Thread.__init__(self)
         self.window = window
 
     def run(self):

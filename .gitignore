@@ -4,3 +4,4 @@
 *.jpeg
 *.txt
 *.log
+urls.py

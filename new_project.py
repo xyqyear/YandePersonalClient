@@ -1,6 +1,9 @@
-import requests
+# -*- coding:utf-8 -*-
+
 import threading
 import traceback
+import requests
+import tkinter.messagebox
 import queue
 import time
 import os
@@ -11,6 +14,11 @@ from tkinter import ttk
 from PIL import Image, ImageTk
 
 from functools import partial
+
+try:
+    from urls import urls_list
+except:
+    pass
 
 # 写个日志记录器
 def logger(level, message):
@@ -40,6 +48,30 @@ def download_message_display(window, message):
     window.download_message_label.config(text=message)
 
 
+def update_page_entry(window):
+    page = str(window.present_page_num)
+    window.page_entry.delete(0, END)
+    window.page_entry.insert(0, page)
+
+
+def before_close_window(window):
+
+    try:
+        urls_list = list()
+
+        while not window.img_queue.empty():
+            urls_list.append(window.img_queue.get())
+
+        with open('urls.py', 'w', encoding='utf-8') as file:
+            file.write('urls_list = ' + str(urls_list))
+
+    except BaseException:
+        logger(3,'on close:  '+str(traceback.format_exc()))
+
+    finally:
+        os._exit(0)
+
+
 class DownloadThreading(threading.Thread):
     def __init__(self, window):
         threading.Thread.__init__(self)
@@ -57,11 +89,12 @@ class DownloadThreading(threading.Thread):
 
             else:
                 site = self.window.site_combobox.get()
-                self.window.download_left_label.config(text='剩余下载:{}'.format(self.window.img_queue.qsize()))
+                self.window.download_left_label.config(
+                    text='剩余下载:{}'.format(self.window.img_queue.qsize()))
                 img_dic = self.window.img_queue.get()
                 img_id = str(img_dic['id'])
                 # 如果这个图片没有原图就跳过吧
-                if not 'file_url' in img_dic:
+                if 'file_url' not in img_dic:
                     logger(2, '错误:{}图片没有file_url'.format(img_id))
                     continue
 
@@ -71,39 +104,46 @@ class DownloadThreading(threading.Thread):
                 present_path = os.path.abspath('.')
                 path = os.path.join(present_path, site)
                 # 文件保存完整路径
-                full_file_path = os.path.join(present_path, site, img_id + img_ext)
+                full_file_path = os.path.join(
+                    present_path, site, img_id + img_ext)
                 # 文件夹不存在就创建
                 if not os.path.exists(path):
                     os.makedirs(path)
 
                 # 如果文件已存在就跳过
                 if os.path.exists(full_file_path):
-                    logger(1,'{}已存在，跳过...'.format(img_id))
+                    logger(1, '{}已存在，跳过...'.format(img_id))
                     continue
 
                 logger(1, '正在下载图片:{}'.format(img_id))
-                download_message_display(self.window, '正在下载图片:{}'.format(img_id))
+                download_message_display(
+                    self.window, '正在下载图片:{}'.format(img_id))
 
                 try:
-                    img_content = requests.get(img_file_url, timeout=30).content
+                    img_content = requests.get(
+                        img_file_url, timeout=30).content
 
-                except:
-                    logger(3, '下载图片{}错误:\n'.format(img_id) + str(traceback.format_exc()))
+                except Exception:
+                    logger(3, '下载图片{}错误:\n'.format(img_id) +
+                           str(traceback.format_exc()))
                     continue
 
                 try:
                     with open(full_file_path, 'wb') as img_file:
                         img_file.write(img_content)
-                except:
-                    logger(3, '保存图片{}错误:\n'.format(img_id) + str(traceback.format_exc()))
+                except Exception:
+                    logger(3, '保存图片{}错误:\n'.format(img_id) +
+                           str(traceback.format_exc()))
                     continue
 
                 logger(1, '{}图片成功保存'.format(img_id))
-                self.window.download_left_label.config(text='剩余下载:{}'.format(self.window.img_queue.qsize()))
-                download_message_display(self.window, '{}图片成功保存'.format(img_id))
+                self.window.download_left_label.config(
+                    text='剩余下载:{}'.format(self.window.img_queue.qsize()))
+                download_message_display(
+                    self.window, '{}图片成功保存'.format(img_id))
 
 
-class GettingImgInfoThreading(threading.Thread):
+class GetImgInfoThreading(threading.Thread):
     def __init__(self, window):
         threading.Thread.__init__(self)
         self.window = window
@@ -113,15 +153,24 @@ class GettingImgInfoThreading(threading.Thread):
             site = self.window.site_combobox.get()
             base_url = 'https://{}/post.json?limit=20&tags={}&page={}'
             tag = self.window.tag_entry.get()
-            if self.window.present_page_num == 1 and self.window.img_num == 0:
+            if self.window.present_page_num == int(
+                    self.window.page_entry.get()) and self.window.img_num == 0:
                 try:
-                    logger(1, '正在获取第1页的数据')
-                    display(self.window, '正在获取第1页的数据')
-                    self.window.present_page = requests.get(base_url.format(site, tag, self.window.present_page_num)) \
-                        .json()
-                except:
-                    logger(3, '获取第1页的数据出错，重试..')
-                    display(self.window, '获取第1页的数据出错，重试..')
+                    logger(
+                        1, '正在获取第{}页的数据'.format(
+                            self.window.present_page_num))
+                    display(
+                        self.window, '正在获取第{}页的数据'.format(
+                            self.window.present_page_num))
+                    self.window.present_page = requests.get(base_url.format(
+                        site, tag, self.window.present_page_num)) .json()
+                except Exception:
+                    logger(
+                        3, '获取第{}页的数据出错，重试..'.format(
+                            self.window.present_page_num))
+                    display(
+                        self.window, '获取第{}页的数据出错，重试..'.format(
+                            self.window.present_page_num))
                     continue
             # 如果当前图片数已经比此页的图片数多，就获取下一页
             # Test
@@ -130,19 +179,29 @@ class GettingImgInfoThreading(threading.Thread):
             if self.window.img_num == len(self.window.present_page):
                 try:
                     # 获取下一页，存入present_page
-                    logger(1, '正在获取第{}页的数据'.format(self.window.present_page_num + 1))
-                    display(self.window, '正在获取第{}页的数据'.format(self.window.present_page_num + 1))
+                    logger(
+                        1, '正在获取第{}页的数据'.format(
+                            self.window.present_page_num + 1))
+                    display(
+                        self.window, '正在获取第{}页的数据'.format(
+                            self.window.present_page_num + 1))
 
-                    self.window.present_page = requests.get(
-                        base_url.format(site, tag, self.window.present_page_num + 1)) \
-                        .json()
+                    self.window.present_page = requests.get(base_url.format(
+                        site, tag, self.window.present_page_num + 1)) .json()
                     self.window.present_page_num += 1
+                    update_page_entry(self.window)
                     self.window.img_num = 0
-                except:
-                    logger(3, '获取第{}页的数据出错:{}，重试中..'.format(self.window.present_page_num + 1
-                                                            , traceback.format_exc()))
-                    display(self.window, '获取第{}页的数据出错:{}，重试中..'.format(self.window.present_page_num + 1
-                                                                       , traceback.format_exc()))
+                except Exception:
+                    logger(
+                        3,
+                        '获取第{}页的数据出错:{}，重试中..'.format(
+                            self.window.present_page_num + 1,
+                            traceback.format_exc()))
+                    display(
+                        self.window,
+                        '获取第{}页的数据出错:{}，重试中..'.format(
+                            self.window.present_page_num + 1,
+                            traceback.format_exc()))
                     continue
 
             # 获取当前应该获取的图片json
@@ -169,9 +228,14 @@ class GettingImgInfoThreading(threading.Thread):
             display(self.window, '正在下载{}的预览图'.format(img_id))
             preview_img_url = present_page_json['preview_url']
             try:
-                preview_img_content = requests.get(preview_img_url, timeout=30).content
-            except:
-                logger(2, '获取图片{}预览图出错，跳过此图:\n{}'.format(present_page_json['id'], traceback.format_exc()))
+                preview_img_content = requests.get(
+                    preview_img_url, timeout=30).content
+            except Exception:
+                logger(
+                    2,
+                    '获取图片{}预览图出错，跳过此图:\n{}'.format(
+                        present_page_json['id'],
+                        traceback.format_exc()))
                 display(self.window, '获取图片{}预览图出错，跳过此图'.format(img_id))
                 continue
 
@@ -210,25 +274,40 @@ class Window:
         self.preview_label = Label(self.top)
         self.download_message_label = Label(self.top, text='没有下载任务')
         self.download_left_label = Label(self.top, text='剩余下载:0')
+        self.page_label = Label(self.top, text='页数:')
 
         # Combobox
         self.site_combobox = ttk.Combobox(self.top, width=25)
-        self.site_combobox['values'] = ('konachan.com', 'yande.re'
-                                        , 'lolibooru.moe')
-        self.site_combobox.set('yande.re')
+        self.site_combobox['values'] = (
+            'konachan.com', 'yande.re', 'lolibooru.moe')
+        self.site_combobox.set('konachan.com')
 
-        self.rating_combobox = ttk.Combobox(self.top, width=25)
+        self.rating_combobox = ttk.Combobox(
+            self.top, width=25, state='readonly')
         self.rating_combobox['values'] = ('安全', '限制级')
         self.rating_combobox.set('安全')
 
         # Entry
         self.tag_entry = Entry(self.top, width=28)
         self.page_entry = Entry(self.top, width=28)
+        self.page_entry.insert(0, '1')
 
         # Button
-        self.start_button = Button(self.top, text='开始看图', width=8, command=self.start_new_task)
-        self.download_button = Button(self.top, text='下载此图', width=8, command=self.download_present_page)
-        self.next_button = Button(self.top, text='下一张图', width=8, command=self.get_next_page)
+        self.start_button = Button(
+            self.top,
+            text='开始看图',
+            width=8,
+            command=self.start_new_task)
+        self.download_button = Button(
+            self.top,
+            text='下载此图',
+            width=8,
+            command=self.download_present_page)
+        self.next_button = Button(
+            self.top,
+            text='下一张图',
+            width=8,
+            command=self.get_next_page)
 
         # grid
         self.site_label.grid(row=0, column=0)
@@ -237,26 +316,50 @@ class Window:
         self.rating_combobox.grid(row=1, column=1, columnspan=2)
         self.tag_label.grid(row=2, column=0)
         self.tag_entry.grid(row=2, column=1, columnspan=2)
-        self.message_label.grid(row=3, column=0, columnspan=2)
-        self.start_button.grid(row=3, column=2)
-        self.preview_label.grid(row=6, column=0, columnspan=3)
-        self.download_button.grid(row=4, column=0)
-        self.next_button.grid(row=4, column=1)
-        self.download_message_label.grid(row=4, column=2)
-        self.download_left_label.grid(row=5, column=2)
+        self.page_label.grid(row=3, column=0)
+        self.page_entry.grid(row=3, column=1, columnspan=2)
+        self.message_label.grid(row=4, column=0, columnspan=2)
+        self.start_button.grid(row=4, column=2)
+        self.download_button.grid(row=5, column=0)
+        self.next_button.grid(row=5, column=1)
+        self.download_message_label.grid(row=5, column=2)
+        self.download_left_label.grid(row=6, column=2)
+
+        self.preview_label.grid(row=7, column=0, columnspan=3)
 
         # 设置关闭窗口操作是退出程序
-        self.top.protocol('WM_DELETE_WINDOW', partial(os._exit, 0))
+        self.top.protocol(
+            'WM_DELETE_WINDOW', partial(
+                before_close_window, self))
+
+        try:
+
+            if not urls_list:
+                raise Exception
+
+            sure = tkinter.messagebox.askquestion(title='导入',message='检测到上次有未完成的下载任务，是否导入?')
+            print(sure)
+            if sure:
+                for url in urls_list:
+                    if url is not '':
+                        print(1)
+                        self.img_queue.put(dict(url))
+
+        except:
+            pass
+
         logger(1, '程序启动完成，进入窗体主循环')
         self.top.mainloop()
 
     def get_next_page(self):
-        getting_threading = GettingImgInfoThreading(self)
+        getting_threading = GetImgInfoThreading(self)
         getting_threading.start()
 
     def download_present_page(self):
         self.img_queue.put(self.present_page_json)
-        self.download_left_label.config(text='剩余下载:{}'.format(self.img_queue.qsize()))
+        self.download_left_label.config(
+            text='剩余下载:{}'.format(
+                self.img_queue.qsize()))
         self.get_next_page()
 
     def start_new_task(self):
@@ -265,9 +368,9 @@ class Window:
         self.img_queue = queue.Queue()
         self.img_list = list()
         self.img_num = 0
-        self.present_page_num = 1
+        self.present_page_num = int(self.page_entry.get())
 
-        getting_threading = GettingImgInfoThreading(self)
+        getting_threading = GetImgInfoThreading(self)
         getting_threading.start()
 
 
