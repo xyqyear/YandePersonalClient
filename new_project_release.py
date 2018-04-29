@@ -18,11 +18,6 @@ try:
 
     from functools import partial
 
-    try:
-        from urls import urls_list
-    except:
-        pass
-
 
     # 写个日志记录器
     def logger(level, message):
@@ -66,7 +61,7 @@ try:
             while not window.img_queue.empty():
                 urls_list.append(window.img_queue.get())
 
-            with open('urls.py', 'w', encoding='utf-8') as file:
+            with open('urls.txt', 'w', encoding='utf-8') as file:
                 file.write('urls_list = ' + str(urls_list))
 
         except BaseException:
@@ -337,16 +332,20 @@ try:
                     before_close_window, self))
 
             try:
+                with open('urls.txt', 'r') as fi:
+                    content = fi.read()
+                    loc = locals()
+                    exec(content)
+                    urls_list = loc['urls_list']
 
+                print(urls_list)
                 if not urls_list:
                     raise Exception
 
                 sure = tkinter.messagebox.askquestion(title='导入', message='检测到上次有未完成的下载任务，是否导入?')
-                print(sure)
                 if sure:
                     for url in urls_list:
                         if url is not '':
-                            print(1)
                             self.img_queue.put(dict(url))
 
             except:
@@ -382,17 +381,18 @@ try:
         new_window = Window()
 
 
+
 except:
     logger(3,'遇到了致命的错误')
     now_date = time.asctime()
     crash_report_file_name = 'crash-report'+now_date+'.txt'
-    crash_report =  'present_page_json:'+str(new_window.present_page_json)+'\n\n\n\n\n\n'+\
+    crash_report =  'error:\n:'+str(traceback.format_exc())+'\n\n\n\n\n\n'+\
+                    'present_page_json:'+str(new_window.present_page_json)+'\n\n\n\n\n\n'+\
                     'img_list:'+str(new_window.img_list)+'\n\n\n\n\n\n'+\
                     'img_num:'+str(new_window.img_num)+'\n\n\n\n\n\n'+\
                     'img_list:'+str(new_window.img_list)+'\n\n\n\n\n\n'+\
                     ':'+str()+'\n\n\n\n\n\n'+\
-                    ':'+str()+'\n\n\n\n\n\n'+\
-                    ':'+str()
+                    ':'+str()+'\n\n\n\n\n\n'
     with open(crash_report_file_name,'w',encoding='utf-8') as f:
         f.write(crash_report)
 

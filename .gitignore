@@ -5,3 +5,10 @@
 *.txt
 *.log
 urls.py
+urls.txt
+new_project_release_test.py
+*.spec
+
+\build
+\__pycache__
+\dist

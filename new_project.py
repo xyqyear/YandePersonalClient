@@ -15,11 +15,6 @@ from PIL import Image, ImageTk
 
 from functools import partial
 
-try:
-    from urls import urls_list
-except:
-    pass
-
 # 写个日志记录器
 def logger(level, message):
     message = str(message)
@@ -62,8 +57,8 @@ def before_close_window(window):
         while not window.img_queue.empty():
             urls_list.append(window.img_queue.get())
 
-        with open('urls.py', 'w', encoding='utf-8') as file:
-            file.write('urls_list = ' + str(urls_list))
+        with open('urls.txt', 'w', encoding='utf-8') as file:
+            file.write('urls_list = '+str(urls_list))
 
     except BaseException:
         logger(3,'on close:  '+str(traceback.format_exc()))
@@ -333,16 +328,20 @@ class Window:
                 before_close_window, self))
 
         try:
+            with open('urls.txt', 'r') as fi:
+                content = fi.read()
+                loc = locals()
+                exec(content)
+                urls_list = loc['urls_list']
 
+            print(urls_list)
             if not urls_list:
                 raise Exception
 
             sure = tkinter.messagebox.askquestion(title='导入',message='检测到上次有未完成的下载任务，是否导入?')
-            print(sure)
             if sure:
                 for url in urls_list:
                     if url is not '':
-                        print(1)
                         self.img_queue.put(dict(url))
 
         except:
